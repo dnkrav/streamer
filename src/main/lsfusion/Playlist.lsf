@@ -49,7 +49,7 @@ deleteFile 'Delete file' (Video v) {
 } CHARWIDTH 12;
 
 // Stop playlist
-playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","kwrite"}); }>;
+playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","ffmpeg"}); }>;
 
 playlistStop 'Stop' (Playlist p) {
     IF isRunning(p) THEN {
