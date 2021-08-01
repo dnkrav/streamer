@@ -1,0 +1,32 @@
+MODULE Video;
+
+REQUIRE Config, Utils;
+
+NAMESPACE Streamer;
+
+CLASS Video 'Video files';
+TABLE video(Video);
+
+filename 'File Name' = DATA STRING (Video) CHARWIDTH 50;
+path 'Folder containing the Video File' = DATA STRING (Video);
+filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) CHARWIDTH 100; // pathbuilder hardcoded for linux servers
+
+isHidden 'Keep files until removal from storage' = DATA BOOLEAN (Video);
+
+video = GROUP AGGR Video v BY filename(v);
+
+checkManual 'Check for new manually uploaded files' () {
+    LOCAL absolutePath = STRING();
+    absolutePath() <- CONCAT '/', localStorage(), manualPath();
+    listFiles(absolutePath());
+    // ToDo Extension validation
+    FOR fileName(INTEGER r) AND NOT video(fileName(r)) AND NOT fileIsDirectory(r) NEW v = Video DO {
+        path(v) <- absolutePath();
+        filename(v) <- fileName(r);
+    }
+    APPLY;
+}
+
+uploadFile 'Upload a new video file' () {
+    // ToDo Upload video via GUI
+}
