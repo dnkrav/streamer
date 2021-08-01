@@ -53,11 +53,18 @@ public class PlaylistRunner extends InternalAction {
             // Initialise command
             List<String> params = Arrays.asList(new String[]{
                     "ffmpeg",
+                    // Hardcode parameters for now
+                    // Read input at native frame rate
+                    "-re",
                     // infinity loop http://underpop.online.fr/f/ffmpeg/help/main-options.htm.gz
                     "-stream_loop", "-1",
                     // run playlist https://trac.ffmpeg.org/wiki/Concatenate#demuxer
                     "-f", "concat",
                     "-i", (String) findProperty("path[Playlist]").readClasses(context, commandArgs).getValue(),
+                    // omit the decoding and encoding step, so it does only demuxing and muxing, less consumption
+                    "-c","copy",
+                    // video format
+                    "-f","flv"
                     });
 
             // ToDo Gather parameters
