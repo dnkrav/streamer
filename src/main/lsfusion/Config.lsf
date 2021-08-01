@@ -1,0 +1,80 @@
+MODULE Config;
+
+REQUIRE MasterData;
+
+NAMESPACE Streamer;
+
+rtmp 'Streaming resource' = DATA STRING ();
+localStorage 'Absolute path to local storage of video files' = DATA STRING ();
+
+CLASS Folder 'Folders for Video Files'
+{
+    auto 'auto',    // auto upload
+    manual 'manual' // manual upload
+}
+TABLE folder(Folder);
+
+type 'Type' (Folder f) = staticCaption(f) CHARWIDTH 10;
+pathSet 'Path on local storage' = DATA STRING (Folder);
+path 'Path on local storage' (Folder f) = OVERRIDE pathSet(f),type(f);
+autoPath 'Path to auto uploads' = path(Folder.auto);
+manualPath 'Path to auto uploads' = path(Folder.manual);
+
+CLASS Parameter 'Parameters for ffmpeg command';
+TABLE parameter(Parameter);
+
+name 'Name' = DATA STRING (Parameter);
+value 'Value' = DATA STRING (Parameter);
+
+FORM folder 'Edit local folder'
+    OBJECTS p = Folder PANEL 
+    PROPERTIES (p) pathSet
+    
+    EDIT Folder OBJECT p
+;
+
+FORM parameter 'Edit ffmpeg parameter'
+    OBJECTS p = Parameter PANEL 
+    PROPERTIES (p) name, value
+    
+    EDIT Parameter OBJECT p
+;
+
+DESIGN parameter {
+    NEW pane FIRST {
+        type = CONTAINERV;
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY (name(p));
+        MOVE PROPERTY (value(p));
+    }
+}
+
+FORM parameters 'ffmpeg Parameters'
+    OBJECTS p = Parameter
+    PROPERTIES (p) READONLY name, value
+    PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
+    
+    OBJECTS f = Folder
+    PROPERTIES (f) READONLY type, path
+    PROPERTIES (f) NEWSESSION EDIT 
+    
+    PROPERTIES PANEL localStorage(), rtmp() 
+;
+
+DESIGN parameters {
+    NEW pane FIRST {
+        fill = 1;
+        alignment = STRETCH;
+        MOVE BOX (p) { fill = 5; }
+        MOVE BOX (f) { fill = 1; }
+        MOVE PROPERTY (localStorage()) { alignment = STRETCH; }
+        MOVE PROPERTY (rtmp()) { alignment = STRETCH; }
+    } 
+}
+
+NAVIGATOR {
+    masterData {
+        NEW parameters FIRST;
+    }
+}

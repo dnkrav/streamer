@@ -1,0 +1,8 @@
+MODULE Streamer;
+// Simple ffmpeg streaming manager
+
+REQUIRE Authentication, Scheduler, SystemEvents, Security, Backup, SQLUtils,
+        Config, Video;
+
+NAMESPACE Streamer;
+

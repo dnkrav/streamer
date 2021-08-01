@@ -1,0 +1,139 @@
+MODULE Playlist;
+
+REQUIRE Video, Time;
+
+NAMESPACE Streamer;
+
+CLASS Playlist 'Playlist';
+TABLE playlist(Playlist);
+
+dateTime 'Created' = DATA DATETIME (Playlist) CHARWIDTH 20;
+name 'Name' = DATA STRING[200] (Playlist) NONULL;
+isGenerated 'ready' = DATA BOOLEAN (Playlist);
+isRunning 'playing' = DATA BOOLEAN (Playlist);
+path 'Path to generated playlist' = DATA STRING (Playlist);
+
+playlist 'Playlist' = GROUP AGGR Playlist p BY name(p);
+
+// Inserting video files into playlists
+in 'in' = DATA BOOLEAN (Playlist,Video) CHARWIDTH 3;
+order 'Order' = DATA INTEGER (Playlist,Video) CHARWIDTH 5;
+
+playlist 'Playlist' (Playlist p) = GROUP CONCAT TEXT ('file \''+filelink(Video v)+'\''),'\n' IF in(p,v) ORDER order(p,v);
+count 'Count Videos' (Playlist p) = GROUP SUM 1 IF in(p, Video v) CHARWIDTH 12;
+count 'Count Playlists' (Video v) = GROUP SUM 1 IF in(Playlist p, v) CHARWIDTH 15;
+
+// Generate Playlist file for ffmpeg concatenation
+generate 'Generate Playlist' (Playlist p) {
+    IF count(p) > 0 THEN {
+        path(p) <- CONCAT '/',localStorage(),name(p)+'.list';
+        stringToFile('ffconcat version 1.0\n' + playlist(p));
+        WRITE resultFile() TO path(p);
+        isGenerated(p) <- TRUE;
+        // No APPLY here in order to prevent its nesting, because this function is being called from event
+    }
+    ELSE {
+        MESSAGE 'No Videos selected for this Playlist';
+    }
+}
+
+WHEN SETDROPPED (in(Playlist p, Video v)) DO {
+    dateTime(p) <- currentDateTime();
+    generate(p);
+}
+
+deleteFile 'Delete file' (Video v) {
+    FOR in(Playlist p,v) DO in(p,v) <- NULL;
+    isHidden(v) <- TRUE;
+    // ToDo Delete file from storage
+} CHARWIDTH 12;
+
+// Stop playlist
+playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","kwrite"}); }>;
+
+playlistStop 'Stop' (Playlist p) {
+    IF isRunning(p) THEN {
+        playlistStop();
+        isRunning(p) <- NULL;
+        APPLY;
+    }
+    ELSE
+        MESSAGE 'The Playlist was not playing';
+}
+
+// Run Playlist
+playlistRunner 'Run Playlist' INTERNAL 'lsfusion.streamer.PlaylistRunner' (Playlist);
+isBlocked 'Some playlist is running' = GROUP LAST Playlist p IF isRunning(p);
+
+playlistRun 'Play' (Playlist p) {
+    IF NOT isBlocked() THEN {
+        IF isGenerated(p) THEN {
+            TRY {
+                playlistRunner(p);
+                isRunning(p) <- TRUE;
+                APPLY;
+            }
+            CATCH {
+                playlistStop();
+                MESSAGE 'Error occured, the Playlist was not started. Contact Administrator';
+            }
+        }
+        ELSE {
+            MESSAGE 'This Playlist has not been generated, check the Edit function first.';
+        }
+    }
+    ELSE {
+        MESSAGE 'Playlist "' + name(isBlocked()) + '" is already playing, stop it if another Playlist is needed.';
+    }
+}
+
+// Forms
+
+FORM playlist 'Edit Playlist'
+    OBJECTS p = Playlist PANEL 
+    PROPERTIES (p) name, playlist
+    
+    OBJECTS v = Video
+    PROPERTIES(p,v) in,order
+    PROPERTIES (v) filename
+    PROPERTIES TOOLBAR DRAW v uploadFile(), checkManual(), deleteFile(v) GRID
+    FILTERS NOT isHidden(v)
+    
+    EDIT Playlist OBJECT p
+;
+
+DESIGN playlist { 
+    NEW pane FIRST {
+        alignment = STRETCH;
+        fill = 1;
+        MOVE PROPERTY(name(p)) {alignment = STRETCH;} 
+        NEW videos {
+            type = CONTAINERH;
+            fill = 1;
+            MOVE BOX (v) {alignment = STRETCH; fill = 1; }
+            MOVE PROPERTY (playlist(p)) {alignment = STRETCH; fill = 1; panelCaptionVertical = TRUE; }
+        }
+    }
+}
+
+FORM playlists 'Playlists'
+    OBJECTS p = Playlist
+    PROPERTIES (p) READONLY isRunning, dateTime, name, count
+    PROPERTIES (p) GRID playlistRun, playlistStop
+    PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
+    
+    OBJECTS v = Video
+    PROPERTIES(p,v) order
+    PROPERTIES (v) READONLY filename
+    FILTERS in(p,v) AND NOT isHidden(v)
+    ORDERS order(p,v)
+;
+DESIGN playlists { 
+    PROPERTY(isRunning(p)) {charWidth = 10; } 
+    PROPERTY(playlistRun(p)) {charWidth = 10; } 
+    PROPERTY(playlistStop(p)) {charWidth = 10; } 
+}
+
+NAVIGATOR {
+    NEW playlists FIRST;
+}
