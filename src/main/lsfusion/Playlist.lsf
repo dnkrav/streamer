@@ -70,7 +70,7 @@ playlistRun 'Play' (Playlist p) {
         IF isGenerated(p) THEN {
             TRY {
                 playlistRunner(p);
-                isRunning(p) <- TRUE;
+                //isRunning(p) <- TRUE;
                 APPLY;
             }
             CATCH {

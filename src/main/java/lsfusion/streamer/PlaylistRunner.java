@@ -60,11 +60,17 @@ public class PlaylistRunner extends InternalAction {
                     "-stream_loop", "-1",
                     // run playlist https://trac.ffmpeg.org/wiki/Concatenate#demuxer
                     "-f", "concat",
+                    // use absolute paths https://stackoverflow.com/questions/38996925/ffmpeg-concat-unsafe-file-name
+                    "-safe", "0",
+                    // link to file generated from the Playlist module
                     "-i", (String) findProperty("path[Playlist]").readClasses(context, commandArgs).getValue(),
                     // omit the decoding and encoding step, so it does only demuxing and muxing, less consumption
                     "-c","copy",
                     // video format
-                    "-f","flv"
+                    "-f","flv",
+                    // Adding the RTMP resource
+                    // rtmp://a.rtmp.youtube.com/live2 + / + stream key
+                    (String) findProperty("rtmp").read(context)
                     });
 
             // ToDo Gather parameters
@@ -77,7 +83,7 @@ public class PlaylistRunner extends InternalAction {
             paramQuery.addProperty("name", LM.findProperty("name[Parameter]").getExpr(context.getModifier(), paramExpr));
             //paramQuery.addProperty("value", LM.findProperty("value[Parameter]").getExpr(paramExpr));
             // Execute query to the database
-            ImOrderMap<ImMap<Object, DataObject>, ImMap<Object, ObjectValue>> paramResult = paramQuery.execute(context);
+            //ImOrderMap<ImMap<Object, DataObject>, ImMap<Object, ObjectValue>> paramResult = paramQuery.execute(context);
             ImOrderMap<ImMap<Object, Object>, ImMap<Object, Object>> paramResult = paramQuery.execute(context);
             // Populate the parameters list
             for (int key = 0, size = paramResult.size(); key < size; key++) {
@@ -86,12 +92,14 @@ public class PlaylistRunner extends InternalAction {
                 params.add((String) values.get("name"));
                 //params.add((String) paramResult.get(key).get("value").getValue());
             }
-            */
+             */
 
-            // Adding the RTMP resource
-            params.add((String) findProperty("rtmp").read(context));
+            // Initialize and run the ffmpeg command
             ProcessBuilder runner = new ProcessBuilder(params);
             runner.start();
+
+            // Success operation flag
+            findProperty("isRunning[Playlist]").change(true, context, commandArgs);
         }
         catch (Exception e)
         {
