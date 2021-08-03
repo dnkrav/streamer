@@ -62,7 +62,7 @@ playlistStop 'Stop' (Playlist p) {
 }
 
 // Run Playlist
-playlistRunner 'Run Playlist' INTERNAL 'lsfusion.streamer.PlaylistRunner' (Playlist);
+playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
 isBlocked 'Some playlist is running' = GROUP LAST Playlist p IF isRunning(p);
 
 playlistRun 'Play' (Playlist p) {
