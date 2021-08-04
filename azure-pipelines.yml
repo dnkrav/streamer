@@ -4,7 +4,7 @@
 # https://docs.microsoft.com/azure/devops/pipelines/languages/java
 
 trigger:
-- devops
+- master
 
 pool:
   vmImage: ubuntu-latest
@@ -20,3 +20,19 @@ steps:
     publishJUnitResults: true
     testResultsFiles: '**/surefire-reports/TEST-*.xml'
     goals: 'package'
+
+# Extract artifacts into staging directory
+- task: CopyFiles@2
+  displayName: 'Copy artifacts into staging'
+  inputs:
+    SourceFolder: 'target'
+    Contents: '*.*ar'
+    TargetFolder: '$(Build.ArtifactStagingDirectory)'
+
+# Upload content of staging directory into published domain
+- task: PublishBuildArtifacts@1
+  displayName: "Publish as artifact"
+  inputs:
+    pathToPublish: '$(Build.ArtifactStagingDirectory)'
+    artifactName: 'streamer-1.0-SNAPSHOT'
+    publishLocation: Container
