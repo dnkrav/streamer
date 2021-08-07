@@ -1,27 +1,27 @@
-## ABOUT
-# Streamer Functionality
+# ABOUT
+## Streamer Functionality
 * Read list of video files uploaded in certain folder on the server,
 * Create various Playlists by picking and ordering selected files,
 * Generate a text file with playlist for ffmpeg [concatenation](https://trac.ffmpeg.org/wiki/Concatenate "ffmpeg Documentation"),
 * Run ffmpeg stream ([copy](https://ffmpeg.org/ffmpeg.html#Stream-copy "ffmpeg Documentation") mode) of selected Playlist on specific RTMP resource in a background,
 * Stop ffmpeg streaming.
-# lsFusion Platform resources
+## lsFusion Platform resources
 * https://lsfusion.org
 * [Slack Discussion](https://slack.lsfusion.org/)
 ---
-## HOWTO
-# Working Forms
+# HOWTO
+## Working Forms
 * **Playlists** - main form to work with, all target functionality is there
 * **Master data** / **ffmpeg Parameters** - application settings
 * **Account** - user authentication settings
-# Application settings
+## Application settings
 * **Parameters of ffmpeg command** - command line arguments for the ffmpeg runner *(not implemented yet)*
 * **Absolute path to local storage of video files** - path to video storage on the server' filesystem
 * **Folders for video files** - subfolders in the storage:
    + **manual** - files uploaded using SSH connection
    + **auto** - files uploaded using GUI
 * **Streaming resource** - RTMP address for streaming
-# Workflow on the Playlists form
+## Workflow on the Playlists form
 * **Playlist** - list of created playlists
    + **playing** - shows if this playlist is streaming currently
    + **Created** - date/time of the last edition of the playlist
@@ -31,7 +31,7 @@
    + **Stop** - button to stop the streaming
 * Buttons **Add**, **Edit**, **Delete** - run named Editor for selected playlist
 * **Video files** - list of videos within the selected Playlist
-# Playlist Editor
+## Playlist Editor
 * **Name** - set custom name for the playlist
 * **in** - tick if the video file should be used in the current playlist
 * **Order** - optional number of the video file in the playlist queue
