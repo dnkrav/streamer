@@ -1,4 +1,4 @@
-# ABOUT
+# About
 
 ## Streamer Functionality
 
@@ -15,7 +15,7 @@
 
 ---
 
-# HOWTO
+# HowTo
 
 ## Working Forms
 
@@ -56,3 +56,16 @@
 * Buttons **Save**, **OK**, **Cancel**, **Close** - save changes in the database and generate updated playlist.  
    *Important: without pressing one of these buttons no changes will be stored in case of closing window or disconnect from the application.*
 * **Playlist** - preview of the playlist resulting the selected preferences
+
+---
+
+# Troubleshooting
+
+## Illegal seek
+
+ffmpeg from the repo of Debian 10 is of version 4.1.6: running infinity loop on it using concat demuxer crushes with error 'Illegal seek' in the end of the first cycle.  
+A newer version is needed.  Successfully tested on version 4.4. Installing ffmpeg from sources is described in details in it's [Documentation](https://trac.ffmpeg.org/wiki/CompilationGuide/Ubuntu).  
+After building from sources the newer version should be installed for the 'lsfusion' user as well, because the application is running from him.  E.g. copy the binaries into common location and check it:  
+
+    $ sudo cp ./bin/ff* /usr/local/bin/
+    $ sudo -u lsfusion ffmpeg -version
