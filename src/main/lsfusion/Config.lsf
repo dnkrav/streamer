@@ -1,6 +1,6 @@
 MODULE Config;
 
-REQUIRE MasterData;
+REQUIRE MasterData, Utils, Time;
 
 NAMESPACE Streamer;
 
@@ -10,21 +10,35 @@ localStorage 'Absolute path to local storage of video files' = DATA STRING ();
 CLASS Folder 'Folders for Video Files'
 {
     auto 'auto',    // auto upload
-    manual 'manual' // manual upload
+    manual 'manual', // manual upload
+    convert 'convert', // files to be converted
+    flv 'flv' // files to be converted
 }
 TABLE folder(Folder);
 
 type 'Type' (Folder f) = staticCaption(f) CHARWIDTH 10;
 pathSet 'Path on local storage' = DATA STRING (Folder);
 path 'Path on local storage' (Folder f) = OVERRIDE pathSet(f),type(f);
-autoPath 'Path to auto uploads' = path(Folder.auto);
-manualPath 'Path to auto uploads' = path(Folder.manual);
+autoPath 'Path to auto uploads' = CONCAT '/', localStorage(), path(Folder.auto);
+manualPath 'Path to auto uploads' = CONCAT '/', localStorage(), path(Folder.manual);
+convertPath 'Path to files to be converted' = CONCAT '/', localStorage(), path(Folder.convert);
+flvPath 'Path to video in FLV format' = CONCAT '/', localStorage(), path(Folder.flv);
+
+checkDirectory (STRING dir) {
+    LOCAL pathDir = STRING ();
+    pathDir() <- CONCAT '/', localStorage(), dir;
+    fileExists(pathDir());
+    IF NOT fileExists() THEN
+        mkdir(pathDir());
+}
 
 CLASS Parameter 'Parameters for ffmpeg command';
 TABLE parameter(Parameter);
 
 name 'Name' = DATA STRING (Parameter);
 value 'Value' = DATA STRING (Parameter);
+
+// Forms
 
 FORM folder 'Edit local folder'
     OBJECTS p = Folder PANEL 
@@ -51,9 +65,10 @@ DESIGN parameter {
 }
 
 FORM parameters 'ffmpeg Parameters'
-    OBJECTS p = Parameter
-    PROPERTIES (p) READONLY name, value
-    PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
+    // The ffmber parameters for video streaming are predefined in the PlaylistRunner.java code
+    //OBJECTS p = Parameter
+    //PROPERTIES (p) READONLY name, value
+    //PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
     
     OBJECTS f = Folder
     PROPERTIES (f) READONLY type, path
@@ -66,9 +81,14 @@ DESIGN parameters {
     NEW pane FIRST {
         fill = 1;
         alignment = STRETCH;
-        MOVE BOX (p) { fill = 5; }
-        MOVE BOX (f) { fill = 1; }
+        type = CONTAINERV;
+        //MOVE BOX (p) { fill = 5; }
         MOVE PROPERTY (localStorage()) { alignment = STRETCH; }
+        MOVE BOX (f)
+        {
+            GRID(f) { autoSize = TRUE; }
+            flex = 0;
+        }
         MOVE PROPERTY (rtmp()) { alignment = STRETCH; }
     } 
 }
