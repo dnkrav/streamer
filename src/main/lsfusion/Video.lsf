@@ -1,6 +1,6 @@
 MODULE Video;
 
-REQUIRE Config, Utils;
+REQUIRE Config;
 
 NAMESPACE Streamer;
 
@@ -9,22 +9,92 @@ TABLE video(Video);
 
 filename 'File Name' = DATA STRING (Video) CHARWIDTH 50;
 path 'Folder containing the Video File' = DATA STRING (Video);
-filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) CHARWIDTH 100; // pathbuilder hardcoded for linux servers
+filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) MATERIALIZED CHARWIDTH 100; // pathbuilder hardcoded for linux servers
 
+// Filename parsing at upload
+filenameExt 'Extension at upload' = DATA STRING (Video) CHARWIDTH 5;
+filenameConv 'File Name after conversion' = DATA STRING (Video) CHARWIDTH 50;
+filelinkOut 'File Name without extension' (Video v) = CONCAT '/', flvPath(), filenameConv(v) CHARWIDTH 100;
+
+// Flags for video conversion sequencing
+toConvert 'Need to be converted into flv format' = DATA BOOLEAN (Video);
+isConverted 'Converted into flv format' = DATA  BOOLEAN (Video);
+
+// Aggregating flag
+numberToConvert 'Videos under conversion' = GROUP SUM 1 IF toConvert(Video v) AND NOT isConverted(v);
+
+// Keep Video record, if was not able to delete file from server
 isHidden 'Keep files until removal from storage' = DATA BOOLEAN (Video);
 
+// Uniqueness check for the Videos by its filenames
 video = GROUP AGGR Video v BY filename(v);
 
-checkManual 'Check for new manually uploaded files' () {
-    LOCAL absolutePath = STRING();
-    absolutePath() <- CONCAT '/', localStorage(), manualPath();
-    listFiles(absolutePath());
-    // ToDo Extension validation
-    FOR fileName(INTEGER r) AND NOT video(fileName(r)) AND NOT fileIsDirectory(r) NEW v = Video DO {
-        path(v) <- absolutePath();
-        filename(v) <- fileName(r);
+WHEN SET (isConverted(Video v)) DO {
+    IF NOT toConvert(v) THEN RETURN;
+    fileExists(filelinkOut(v));
+    IF fileExists() THEN {
+        TRY {
+            delete(filelink(v));
+        }
+        CATCH {
+            MESSAGE 'Cannot delete file ' + filelink(v) + ':\n' + messageCaughtException();
+        }
+        fileExists(filelink(v));
+        IF NOT fileExists() 
+            THEN path(v) <- flvPath();
+        toConvert(v) <- NULL;
+        isConverted(v) <- TRUE;
     }
-    APPLY;
+    ELSE {
+        // Accumulate files with errors
+        isConverted(v) <- NULL;
+        toConvert(v) <- NULL;
+    }
+}
+
+// Files upload
+checkManual 'Check for new manually uploaded files' () {
+    TRY {
+        checkDirectory(path(Folder.convert));
+        NEWSESSION {
+            LOCAL counter = INTEGER();
+            LOCAL counterConvert = INTEGER();
+            LOCAL absolutePath = STRING();
+            LOCAL targetExtension = STRING();
+            LOCAL filenameWithoutExtension = STRING();
+            counter() <- 0;
+            counterConvert() <- 0;
+            targetExtension() <- '.flv';
+            listFiles(manualPath());
+            FOR fileName(INTEGER r) AND NOT video(fileName(r)) AND NOT fileIsDirectory(r) NEW v = Video DO {
+                filename(v) <- fileName(r);
+                // Regular Expressions in LSFusion require masking of the symbol \
+                filenameWithoutExtension() <- regexpReplace(filename(v),'\\.[^\\.]*$','','');
+                // Extract extension of the uploaded file
+                filenameExt(v) <- replace(filename(v),filenameWithoutExtension(),'');
+                IF filenameExt(v) == targetExtension() THEN {
+                    path(v) <- flvPath();
+                    isConverted(v) <- TRUE;
+                }
+                ELSE {
+                    path(v) <- convertPath();
+                    filenameConv(v) <- filenameWithoutExtension() + targetExtension();
+                    toConvert(v) <- TRUE;
+                    counterConvert() <- counterConvert() + 1;
+                }
+                move((CONCAT '/', manualPath(), filename(v)), filelink(v));
+                counter() <- counter() + 1;
+            }
+            IF counter() > 0 THEN
+                MESSAGE 'Successfully added ' + counter() + ' new files.\nFiles to be converted: ' + counterConvert() + ' put into queue.';
+            ELSE 
+                MESSAGE 'No new manualy uploaded files found';
+            APPLY;
+        }
+    }
+    CATCH {
+        MESSAGE 'Cannot read the folder for manualy uploaded files:\n' + messageCaughtException();
+    }
 }
 
 uploadFile 'Upload a new video file' () {
