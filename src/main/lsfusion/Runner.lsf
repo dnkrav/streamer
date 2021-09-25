@@ -1,0 +1,103 @@
+MODULE Runner;
+
+REQUIRE Playlist;
+
+NAMESPACE Streamer;
+
+// Block for single ffmper process running
+isBlocked 'ffmpeg process is busy' () = DATA BOOLEAN ();
+
+// Convert video into flv format
+videoConverter 'Convert Video' INTERNAL 'lsfusion.solutions.streamer.VideoConverter' (Video);
+
+// Runner for video conversion Scheduler
+convertNextVideo 'Convert next video' () {
+    IF isRunning() THEN {
+        printToLog('Cannot start video conversion, because a playlist is running: ' + name(isRunning()));
+        RETURN;
+    }
+    
+    LOCAL nextVideo = Video(); 
+    nextVideo() <- GROUP LAST Video v IF toConvert(v) AND NOT isConverted(v);
+    
+    IF NOT nextVideo() THEN RETURN;
+    
+    IF NOT filelink(nextVideo()) OR NOT filelinkOut(nextVideo()) THEN {
+        printToLog('Cannot convert video, because some of links empty: ' + (OVERRIDE filelink(nextVideo()),filelinkOut(nextVideo()),filename(nextVideo()),'unknown'));
+        toConvert(nextVideo()) <- NULL;
+        RETURN;
+    }
+    
+    IF isBlocked() THEN {
+        printToLog('ffmpeg is blocked by another process');
+        RETURN;
+    }
+    printToLog('Start video conversion: ' + filename(nextVideo()));
+    NEWSESSION { 
+        isBlocked() <- TRUE; 
+        APPLY; 
+    }
+    
+    videoConverter(nextVideo());
+    
+    printToLog('Stop video conversion: ' + filename(nextVideo()));
+    isBlocked() <- NULL;
+    APPLY;
+}
+
+//EXTEND FORM playlist PROPERTIES TOOLBAR convertNextVideo() DRAW v;
+
+// Run Playlist
+playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
+
+// GUI button to play
+playlistRun 'Play' (Playlist p) {
+    // @ToDo In case user has a powerful server, allow parallel playing and converting
+    IF numberToConvert() > 0 THEN {
+        MESSAGE 'Cannot run playlist, because server is busy for converting, remain: ' + numberToConvert() + ' videos.';
+        RETURN;
+    }
+    
+    IF isRunning() THEN {
+        MESSAGE 'Playlist "' + name(isRunning()) + '" is already playing, stop it if another Playlist is needed.';
+        RETURN;
+    }
+    
+    IF NOT isGenerated(p) THEN {
+        MESSAGE 'This Playlist has not been generated, check the Edit function first.';
+        RETURN;
+    }
+    
+    IF isBlocked() THEN {
+        MESSAGE 'ffmpeg is blocked by another process. Contact Administrator';
+        RETURN;
+    }
+    
+    checkDirectory(path(Folder.flv));
+    
+    printToLog('Start Playlist: ' + name(p));
+    TRY {
+        playlistRunner(p);
+        isBlocked() <- TRUE;
+        APPLY;
+    }
+    CATCH {
+        playlistStop();
+        MESSAGE 'Error occured, the Playlist was not started. Contact Administrator:\n' + messageCaughtException();
+    }
+}
+
+EXTEND FORM playlists PROPERTIES (p) GRID playlistRun;
+
+DESIGN playlists { PROPERTY(playlistRun(p)) { charWidth = 10; } }
+
+// Process monitor
+EXTEND FORM parameters PROPERTIES numberToConvert(), nameRunning=name(isRunning()), isBlocked();
+DESIGN parameters { pane { 
+    NEW process {
+        caption = 'Process monitor';
+        MOVE PROPERTY (numberToConvert()); 
+        MOVE PROPERTY (nameRunning) { caption='Playlist running'; }
+        MOVE PROPERTY (isBlocked());
+    }
+}}
