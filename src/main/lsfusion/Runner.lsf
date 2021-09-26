@@ -12,15 +12,15 @@ videoConverter 'Convert Video' INTERNAL 'lsfusion.solutions.streamer.VideoConver
 
 // Runner for video conversion Scheduler
 convertNextVideo 'Convert next video' () {
-    IF isRunning() THEN {
-        printToLog('Cannot start video conversion, because a playlist is running: ' + name(isRunning()));
-        RETURN;
-    }
-    
     LOCAL nextVideo = Video(); 
     nextVideo() <- GROUP LAST Video v IF toConvert(v) AND NOT isConverted(v);
     
     IF NOT nextVideo() THEN RETURN;
+    
+    IF isRunning() THEN {
+        printToLog('Cannot start video conversion, because a playlist is running: ' + name(isRunning()));
+        RETURN;
+    }
     
     IF NOT filelink(nextVideo()) OR NOT filelinkOut(nextVideo()) THEN {
         printToLog('Cannot convert video, because some of links empty: ' + (OVERRIDE filelink(nextVideo()),filelinkOut(nextVideo()),filename(nextVideo()),'unknown'));
