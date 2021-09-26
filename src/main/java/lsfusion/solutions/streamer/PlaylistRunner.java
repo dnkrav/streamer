@@ -42,6 +42,7 @@ public class PlaylistRunner extends InternalAction {
     private void runPlaylist(ExecutionContext<ClassPropertyInterface> context, DataObject commandArgs) throws IOException {
         try {
             // Initialise command arguments, hardcoded for flv stream
+            // ffmpeg -re -stream_loop -1 -f concat -safe 0 -i playlist_filepath -c copy -f flv RTMP_address
             List<String> params = Arrays.asList("ffmpeg",
                     // Hardcode parameters for now
                     // Read input at native frame rate

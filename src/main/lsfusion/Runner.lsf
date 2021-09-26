@@ -105,7 +105,7 @@ playlistRun 'Play' (Playlist p) {
 
 EXTEND FORM playlists 
     PROPERTIES (p) GRID playlistRun
-    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p)
+    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p) FIRST 
 ;
 
 DESIGN playlists { PROPERTY(playlistRun(p)) { charWidth = 10; } }

@@ -40,8 +40,10 @@ WHEN SET (isConverted(Video v)) DO {
             MESSAGE 'Cannot delete file ' + filelink(v) + ':\n' + messageCaughtException();
         }
         fileExists(filelink(v));
-        IF NOT fileExists() 
-            THEN path(v) <- flvPath();
+        IF NOT fileExists() THEN {
+            path(v) <- flvPath();
+            filename(v) <- filenameConv(v);
+        }
         toConvert(v) <- NULL;
         isConverted(v) <- TRUE;
     }
