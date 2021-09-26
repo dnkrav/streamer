@@ -50,6 +50,22 @@ convertNextVideo 'Convert next video' () {
 // Run Playlist
 playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
 
+// Stop playlist
+// @ToDo When allow parallel run and conversion resolve that stopping playlist may stop some another ffmpeg job
+playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","ffmpeg"}); }>;
+
+playlistStop 'Stop' (Playlist p) {
+    IF isRunning(p) THEN {
+        playlistStop();
+        isRunning(p) <- NULL;
+        isBlocked() <- NULL;
+        printToLog('Stop Playlist: ' + name(p));
+        APPLY;
+    }
+    ELSE
+        MESSAGE 'The Playlist was not playing';
+}
+
 // GUI button to play
 playlistRun 'Play' (Playlist p) {
     // @ToDo In case user has a powerful server, allow parallel playing and converting
@@ -87,7 +103,10 @@ playlistRun 'Play' (Playlist p) {
     }
 }
 
-EXTEND FORM playlists PROPERTIES (p) GRID playlistRun;
+EXTEND FORM playlists 
+    PROPERTIES (p) GRID playlistRun
+    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p)
+;
 
 DESIGN playlists { PROPERTY(playlistRun(p)) { charWidth = 10; } }
 

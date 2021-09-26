@@ -70,21 +70,6 @@ deleteFile 'Delete file' (Video v) {
     }
 } CHARWIDTH 12;
 
-// Stop playlist
-// @ToDo When allow parallel run and conversion resolve that stopping playlist may stop some another ffmpeg job
-playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","ffmpeg"}); }>;
-
-playlistStop 'Stop' (Playlist p) {
-    IF isRunning(p) THEN {
-        playlistStop();
-        isRunning(p) <- NULL;
-        printToLog('Stop Playlist: ' + name(p));
-        APPLY;
-    }
-    ELSE
-        MESSAGE 'The Playlist was not playing';
-}
-
 // Aggregating flag
 isRunning 'Some playlist is running' = GROUP LAST Playlist p IF isRunning(p);
 
@@ -132,7 +117,6 @@ DESIGN playlist {
 FORM playlists 'Playlists'
     OBJECTS p = Playlist
     PROPERTIES (p) READONLY isRunning, dateTime, name, count
-    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p)
     PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
     
     OBJECTS v = Video
