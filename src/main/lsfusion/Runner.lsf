@@ -50,7 +50,7 @@ convertNextVideo 'Convert next video' () {
 // Run Playlist
 playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
 //testRunner 'Test Run' INTERNAL 'lsfusion.solutions.streamer.TestRunner' (Playlist);
-playlistService 'Trigger Playlist service' INTERNAL 'lsfusion.solutions.streamer.PlaylistService' (Playlist, BOOLEAN);
+playlistService 'Trigger Playlist service' INTERNAL 'lsfusion.solutions.streamer.PlaylistService' (Playlist, STRING[5]);
 
 // Stop playlist
 // @ToDo When allow parallel run and conversion resolve that stopping playlist may stop some another ffmpeg job
@@ -62,7 +62,7 @@ playlistStop 'Stop' (Playlist p) {
     }
         
     TRY {
-        playlistService(p,NULL);
+        playlistService(p, 'Stop');
         isRunning(p) <- NULL;
         isBlocked() <- NULL;
         APPLY;
@@ -98,8 +98,7 @@ playlistRun 'Play' (Playlist p) {
     checkDirectory(path(Folder.flv));
     
     TRY {
-        //playlistRunner(p);
-        playlistService(p, TRUE);
+        playlistService(p, 'Start');
         isBlocked() <- TRUE;
         APPLY;
     }
@@ -111,7 +110,7 @@ playlistRun 'Play' (Playlist p) {
 
 EXTEND FORM playlists 
     PROPERTIES (p) GRID playlistRun
-    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p) FIRST 
+    PROPERTIES (p) TOOLBAR playlistStop SHOWIF isRunning(p) DRAW v
 ;
 
 DESIGN playlists { PROPERTY(playlistRun(p)) { charWidth = 10; } }

@@ -36,8 +36,15 @@ public class PlaylistService extends InternalAction {
             throws SQLException, SQLHandledException {
         try {
             DataObject commandArgs = context.getDataKeyValue(playlistInterface);
-            boolean mode = (boolean) context.getDataKeyValue(modeInterface).getValue();
-            this.triggerPlaylist(context, commandArgs, mode);
+            String modeSet = (String) context.getDataKeyValue(modeInterface).getValue();
+            switch (modeSet) {
+                case "Start" :
+                    this.triggerPlaylist(context, commandArgs, true);
+                    break;
+                case "Stop" :
+                    this.triggerPlaylist(context, commandArgs, false);
+                    break;
+            }
         }
         catch (Exception e) {
             throw ExceptionUtils.propagate(e, SQLException.class, SQLHandledException.class);
