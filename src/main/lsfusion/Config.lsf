@@ -18,7 +18,7 @@ CLASS Folder 'Folders for Video Files'
 }
 TABLE folder(Folder);
 
-type 'Type' (Folder f) = staticCaption(f) CHARWIDTH 10;
+type 'Type' (Folder f) = STRING (staticCaption(f)) CHARWIDTH 10;
 pathSet 'Path on local storage' = DATA STRING (Folder);
 path 'Path on local storage' (Folder f) = OVERRIDE pathSet(f),type(f);
 autoPath 'Path to auto uploads' = CONCAT '/', localStorage(), path(Folder.auto);

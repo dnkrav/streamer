@@ -71,7 +71,7 @@ deleteFile 'Delete file' (Video v) {
 } CHARWIDTH 12;
 
 // Aggregating flag
-isRunning 'Some playlist is running' = GROUP LAST Playlist p IF isRunning(p);
+isRunning 'Some playlist is running' = GROUP LAST Playlist p IF isRunning(p) ORDER dateTime(p);
 
 // Forms
 showDelete 'Show deletion button' = DATA LOCAL BOOLEAN ();
@@ -82,8 +82,8 @@ FORM playlist 'Edit Playlist'
     
     OBJECTS v = Video
     PROPERTIES(p,v) in,order
-    PROPERTIES (v) READONLY filename, toConvert, isConverted
-    PROPERTIES TOOLBAR DRAW v checkManual(), deleteFile(v) GRID SHOWIF showDelete() // not implemented: uploadFile(), 
+    PROPERTIES (v) READONLY dateTime, filename, toConvert, isConverted
+    PROPERTIES TOOLBAR DRAW v uploadFile(), checkManual(), deleteFile(v) GRID SHOWIF showDelete()  
     FILTERS NOT isHidden(v)
     FILTERGROUP videos
         FILTER 'Show files in FLV format only' isConverted(v) DEFAULT
@@ -121,7 +121,7 @@ FORM playlists 'Playlists'
     
     OBJECTS v = Video
     PROPERTIES(p,v) order
-    PROPERTIES (v) READONLY filename
+    PROPERTIES (v) READONLY dateTime, filename
     FILTERS in(p,v) AND NOT isHidden(v)
     ORDERS order(p,v)
 ;

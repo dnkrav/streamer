@@ -11,6 +11,8 @@ filename 'File Name' = DATA STRING (Video) CHARWIDTH 50;
 path 'Folder containing the Video File' = DATA STRING (Video);
 filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) MATERIALIZED CHARWIDTH 100; // pathbuilder hardcoded for linux servers
 
+dateTime 'Uploaded' = DATA DATETIME (Video);
+
 // Filename parsing at upload
 filenameExt 'Extension at upload' = DATA STRING (Video) CHARWIDTH 5;
 filenameConv 'File Name after conversion' = DATA STRING (Video) CHARWIDTH 50;
@@ -28,6 +30,10 @@ isHidden 'Keep files until removal from storage' = DATA BOOLEAN (Video);
 
 // Uniqueness check for the Videos by its filenames
 video = GROUP AGGR Video v BY filename(v);
+
+WHEN SETCHANGED (filename(Video v)) DO {
+    dateTime(v) <- currentDateTime();
+}
 
 WHEN SET (isConverted(Video v)) DO {
     IF NOT toConvert(v) THEN RETURN;
@@ -54,8 +60,8 @@ WHEN SET (isConverted(Video v)) DO {
     }
 }
 
-// Files upload
-checkManual 'Check for new manually uploaded files' () {
+// Analyse uploaded files
+checkUpload 'Check for new manually uploaded files' (STRING uploadPath) {
     TRY {
         checkDirectory(path(Folder.convert));
         NEWSESSION {
@@ -67,7 +73,7 @@ checkManual 'Check for new manually uploaded files' () {
             counter() <- 0;
             counterConvert() <- 0;
             targetExtension() <- '.flv';
-            listFiles(manualPath());
+            listFiles(uploadPath);
             FOR fileName(INTEGER r) AND NOT video(fileName(r)) AND NOT fileIsDirectory(r) NEW v = Video DO {
                 filename(v) <- fileName(r);
                 // Regular Expressions in LSFusion require masking of the symbol \
@@ -84,21 +90,55 @@ checkManual 'Check for new manually uploaded files' () {
                     toConvert(v) <- TRUE;
                     counterConvert() <- counterConvert() + 1;
                 }
-                move((CONCAT '/', manualPath(), filename(v)), filelink(v));
+                move((CONCAT '/', uploadPath, filename(v)), filelink(v));
                 counter() <- counter() + 1;
             }
             IF counter() > 0 THEN
                 MESSAGE 'Successfully added ' + counter() + ' new files.\nFiles to be converted: ' + counterConvert() + ' put into queue.';
             ELSE 
-                MESSAGE 'No new manualy uploaded files found';
+                MESSAGE 'No new uploaded files found.';
             APPLY;
         }
     }
     CATCH {
-        MESSAGE 'Cannot read the folder for manualy uploaded files:\n' + messageCaughtException();
+        MESSAGE 'Cannot read folder ' + uploadPath + ':\n' + messageCaughtException();
+    }
+}
+
+checkManual 'Check for new manually uploaded files' () {
+    checkUpload(manualPath());
+}
+
+// Auto upload
+localFileName 'Name of the video on server' = DATA LOCAL STRING ();
+FORM localFileNameDialog 'Provide name for the video file on this server'
+    OBJECTS givenName = STRING PANEL 
+    PROPERTIES localFileName = VALUE(givenName) BACKGROUND RGB (0,255,255)
+;
+DESIGN localFileNameDialog {
+    size = (400,60);
+    NEW pane FIRST {
+        alignment = STRETCH; fill = 1;
+        MOVE PROPERTY (localFileName) { alignment = STRETCH; caption = '';}
     }
 }
 
 uploadFile 'Upload a new video file' () {
-    // ToDo Upload video via GUI
+    TRY {
+        INPUT f = FILE DO {
+            // @ToDo Get the original file name
+            DIALOG localFileNameDialog OBJECTS givenName = localFileName() CHANGE DO {
+                WRITE f TO autoPath() + '/' + localFileName();
+                // Run the same routine as for files uploaded via scp
+                checkUpload(autoPath());
+            } ELSE {
+                MESSAGE 'Name for the video file on the server is required';
+            }
+        } ELSE {
+            MESSAGE 'File upload was cancelled';
+        }
+    } CATCH {
+        MESSAGE 'Cannot upload file, contact Administrator.';
+        printToLog('Auto file upload stopped with error: ' + messageCaughtException());
+    }
 }
