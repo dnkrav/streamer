@@ -6,6 +6,8 @@ NAMESPACE Streamer;
 
 rtmp 'Streaming resource' = DATA STRING ();
 localStorage 'Absolute path to local storage of video files' = DATA STRING ();
+playlistLinkService 'Absolute path to symbolic link, which targets service on to the playlist file' = DATA STRING ();
+pidFileService 'Absolute path to pid file for playlist service' = DATA STRING ();
 
 CLASS Folder 'Folders for Video Files'
 {
@@ -74,7 +76,7 @@ FORM parameters 'ffmpeg Parameters'
     PROPERTIES (f) READONLY type, path
     PROPERTIES (f) NEWSESSION EDIT 
     
-    PROPERTIES PANEL localStorage(), rtmp() 
+    PROPERTIES PANEL localStorage(), rtmp() , pidFileService(), playlistLinkService()
 ;
 
 DESIGN parameters {
@@ -84,6 +86,8 @@ DESIGN parameters {
         type = CONTAINERV;
         //MOVE BOX (p) { fill = 5; }
         MOVE PROPERTY (localStorage()) { alignment = STRETCH; }
+        MOVE PROPERTY (pidFileService()) { alignment = STRETCH; }
+        MOVE PROPERTY (playlistLinkService()) { alignment = STRETCH; }
         MOVE BOX (f)
         {
             GRID(f) { autoSize = TRUE; }

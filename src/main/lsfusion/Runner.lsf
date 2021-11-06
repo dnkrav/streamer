@@ -13,7 +13,7 @@ videoConverter 'Convert Video' INTERNAL 'lsfusion.solutions.streamer.VideoConver
 // Runner for video conversion Scheduler
 convertNextVideo 'Convert next video' () {
     LOCAL nextVideo = Video(); 
-    nextVideo() <- GROUP LAST Video v IF toConvert(v) AND NOT isConverted(v);
+    nextVideo() <- GROUP LAST Video v IF toConvert(v) AND NOT isConverted(v) ORDER dateTime(v);
     
     IF NOT nextVideo() THEN RETURN;
     
@@ -49,21 +49,27 @@ convertNextVideo 'Convert next video' () {
 
 // Run Playlist
 playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
+//testRunner 'Test Run' INTERNAL 'lsfusion.solutions.streamer.TestRunner' (Playlist);
+playlistService 'Trigger Playlist service' INTERNAL 'lsfusion.solutions.streamer.PlaylistService' (Playlist, BOOLEAN);
 
 // Stop playlist
 // @ToDo When allow parallel run and conversion resolve that stopping playlist may stop some another ffmpeg job
-playlistStop 'Stop Playlist' INTERNAL <{ Runtime.getRuntime().exec(new String[] {"pkill","-f","ffmpeg"}); }>;
 
 playlistStop 'Stop' (Playlist p) {
-    IF isRunning(p) THEN {
-        playlistStop();
+    IF NOT isRunning(p) THEN {
+        MESSAGE 'The Playlist is not playing';
+        RETURN;
+    }
+        
+    TRY {
+        playlistService(p,NULL);
         isRunning(p) <- NULL;
         isBlocked() <- NULL;
-        printToLog('Stop Playlist: ' + name(p));
         APPLY;
+    } CATCH {
+        MESSAGE 'Cannot stop playlist. Contact Administrator';
     }
-    ELSE
-        MESSAGE 'The Playlist was not playing';
+    printToLog('Stop Playlist: ' + name(p));
 }
 
 // GUI button to play
@@ -91,16 +97,16 @@ playlistRun 'Play' (Playlist p) {
     
     checkDirectory(path(Folder.flv));
     
-    printToLog('Start Playlist: ' + name(p));
     TRY {
-        playlistRunner(p);
+        //playlistRunner(p);
+        playlistService(p, TRUE);
         isBlocked() <- TRUE;
         APPLY;
     }
     CATCH {
-        playlistStop();
         MESSAGE 'Error occured, the Playlist was not started. Contact Administrator:\n' + messageCaughtException();
     }
+    printToLog('Start Playlist: ' + name(p));
 }
 
 EXTEND FORM playlists 

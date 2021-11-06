@@ -1,0 +1,16 @@
+# We need to allow for application to run the particular streamer service
+# The way to enable this is to add specific privilege into /etc/sudoers.d (no restart of sudo service needed afterwards)
+
+# A good guide on sudoers syntax and handling is available here:
+# https://www.digitalocean.com/community/tutorials/how-to-edit-the-sudoers-file
+# Strongly recommend to use visudo command for this operation:
+# $ sudo visudo -f /etc/sudoers.d/91-streamer-service
+# and provide privilege for the lsfusion user to run the only three commands as root without password:
+
+lsfusion ALL = (ALL) NOPASSWD: /usr/bin/systemctl status streamer.service
+lsfusion ALL = (ALL) NOPASSWD: /usr/bin/systemctl start streamer.service
+lsfusion ALL = (ALL) NOPASSWD: /usr/bin/systemctl stop streamer.service
+
+# After editing and installing the service try according sudo command from the lsfusion user:
+# $ sudo -u lsfusion sudo systemctl status streamer.service
+# It will ask for a password for this user, so need to set it up, despite lsfusion is a system user with no login

@@ -1,0 +1,40 @@
+# Update absolute paths accordingly to the server configuration
+
+[Unit]
+Description=Stream linked Playlist to RTMP address
+#After=network.target
+
+[Service]
+# https://www.freedesktop.org/software/systemd/man/systemd.service.html
+Type=simple
+User=lsfusion
+Environment="STORAGE_HOME=/mnt/video"
+Environment="PID_FILE=/mnt/video/streamer-playlist.pid"
+# Put exact address in the playlistLinkService() parameter of the application
+Environment="PLAYLIST_LINK=/mnt/video/current-stream.list"
+# @ToDo Import stream Key from the application parameters
+# For now put exact address in the script manually
+Environment="STREAM_RTMP_ADDRESS=rtmp-stream-key"
+
+# Hardcode parameters for now
+# Read input at native frame rate
+# infinity loop http://underpop.online.fr/f/ffmpeg/help/main-options.htm.gz
+# run playlist https://trac.ffmpeg.org/wiki/Concatenate#demuxer
+# use absolute paths https://stackoverflow.com/questions/38996925/ffmpeg-concat-unsafe-file-name
+# link to file generated from the Playlist module
+# omit the decoding and encoding step, so it does only demuxing and muxing, less consumption
+# video format
+# Adding the RTMP resource
+ExecStart=/usr/local/bin/ffmpeg \
+        -re \
+        -stream_loop -1 \
+        -f concat \
+        -safe 0 \
+        -i ${PLAYLIST_LINK} \
+        -c copy \
+        -f flv \
+        ${STREAM_RTMP_ADDRESS}
+
+ExecStop=pkill \
+        -f \
+        ffmpeg
