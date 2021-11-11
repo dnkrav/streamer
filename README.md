@@ -2,6 +2,7 @@
 
 Streamer helps to manage video streaming on a resource, which supports RTMP protocol.
 The interface allows to combine and sort video files in playlists, which then to be selected for running in infinity loop.
+The ffmpeg streaming is runnning as an operating system service and controlled by systemd.
 It uses ffmpeg in Stream copy mode, so no CPU resources spent on video conversion when playing every video many times.
 The videos uploaded by user are being automatically converted into FLV format for this purpose.
 
@@ -11,7 +12,7 @@ The videos uploaded by user are being automatically converted into FLV format fo
 * Convert uploaded video into FLV format, if needed, in background task,
 * Create various Playlists by picking and ordering selected files,
 * Generate a text file with playlist for ffmpeg [concatenation](https://trac.ffmpeg.org/wiki/Concatenate "ffmpeg Documentation"),
-* Run ffmpeg stream ([copy](https://ffmpeg.org/ffmpeg.html#Stream-copy "ffmpeg Documentation") mode) of selected Playlist on specific RTMP resource in a background,
+* Trigger operating system service to run ffmpeg stream ([copy](https://ffmpeg.org/ffmpeg.html#Stream-copy "ffmpeg Documentation") mode) of selected Playlist on specific RTMP resource in a background,
 * Stop ffmpeg streaming.
 
 ## lsFusion Platform resources
@@ -34,6 +35,8 @@ The videos uploaded by user are being automatically converted into FLV format fo
 
 <!-- * **Parameters of ffmpeg command** - command line arguments for the ffmpeg runner *(not implemented yet)* -->
 * **Absolute path to local storage of video files** - path to video storage on the server' filesystem, must be created and specified by server Administrator;
+* **Absolute path to pid file for playlist service** - path set as PID_FILE in the operation system service
+* **Absolute path to symbolic link, which targets service on to the playlist file** - the file used by the operation system service
 * **Folders for video files** - subfolders in the storage:
    + **manual** - files uploaded using SSH connection,
    + **auto** - files uploaded using GUI,
@@ -51,19 +54,22 @@ The videos uploaded by user are being automatically converted into FLV format fo
    + **Created** - date/time of the last edition of the playlist,
    + **Name** - custom name of the playlist,
    + **Count Videos** - number of videos in the playlist,
-   + **Play** - button to start the streaming,
+   + **Play** - button to start the streaming of selected Playlist,
    + **Stop** - button to stop the streaming,
 * Buttons **Add**, **Edit**, **Delete** - run named Editor for selected playlist;
 * **Video files** - list of videos within the selected Playlist.
 
 ## Playlist Editor
 
-* **Name** - set custom name for the playlist
-* **in** - tick if the video file should be used in the current playlist
-* **Order** - optional number of the video file in the playlist queue
-* **File Name** - video file name on the server
-* **Delete file** - remove the video from the list, but keep it on the server
-* Button **Check for new manually uploaded files** - screen the manual folder on the server and detect new files there
+* **Name** - set custom name for the playlist.
+* Video files list:
+   * **in** - tick if the video file should be used in the current playlist,
+   * **Order** - optional number of the video file in the playlist queue,
+   * **Uploaded** - date/time when the video file was registered in the application,
+   * **File Name** - video file name on the server,
+   * **Delete file** - remove the video from the list and from the server, it is available only when a tick **Show deletion button** is switched on.
+* Button **Upload a new video file** - user dialog to upload a video file on the server, the filename to store the file on the server after upload must be provided;
+* Button **Check for new manually uploaded files** - screen the manual folder on the server and detect new files there;
 * Autofilter **Show files in FLV format only** - switch between viewing files in different formats.  
    Non-converted files may be added into a playlist, they will appear in generated file after conversion will be completed, until this Playlist Preview field is available.
 * Buttons **Save**, **OK**, **Cancel**, **Close** - save changes in the database and generate updated playlist.  
@@ -106,3 +112,10 @@ After building from sources the newer version should be installed for the 'lsfus
 
 The Video file should be of FLV format in order to eliminate video conversion workload at every streaming.  
 The streamer defines the video format at upload by the filename extension and convert the video into FLV if it doesn't match "*.flv".
+
+## Benchmark
+
+Performance of the application to convert from *.MOV into *.FLV on testing server with following resources:
+
+2 COVID-19: 2 min 21 sec 
+3 COVID-19: 2 min 21 sec 

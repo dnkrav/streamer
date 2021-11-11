@@ -55,18 +55,21 @@ WHEN CHANGED (filelink(Video v)) DO {
 }
 
 deleteFile 'Delete file' (Video v) {
-    NEWSESSION {
-        FOR in(Playlist p,v) DO 
-            in(p,v) <- NULL;
-        isHidden(v) <- TRUE;
-        TRY {
-            delete(filelink(v));
-            DELETE (v);
+    ASK 'Do you want to delete the video file ' + filename(v) + '?' DO {
+        NEWSESSION {
+            FOR in(Playlist p,v) DO {
+                in(p,v) <- NULL;
+            }
+            isHidden(v) <- TRUE;
+            TRY {
+                delete(filelink(v));
+                DELETE (v);
+            }
+            CATCH {
+                MESSAGE 'Cannot delete file\n' + filelink(v) + '\nfrom the server:\n' + messageCaughtException();
+            }
+            APPLY;
         }
-        CATCH {
-            MESSAGE 'Cannot delete file\n' + filelink(v) + '\nfrom the server:\n' + messageCaughtException();
-        }
-        APPLY;
     }
 } CHARWIDTH 12;
 
