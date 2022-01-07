@@ -11,8 +11,11 @@ import lsfusion.server.logics.property.classes.ClassPropertyInterface;
 import lsfusion.server.physics.admin.log.ServerLoggers;
 import lsfusion.server.physics.dev.integration.internal.to.InternalAction;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.sql.SQLException;
+import java.util.concurrent.TimeUnit;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
@@ -44,10 +47,39 @@ public class PlaylistService extends InternalAction {
                 case "Stop" :
                     this.triggerPlaylist(context, commandArgs, false);
                     break;
+                default:
+                    throw new StringIndexOutOfBoundsException("Unknown action for the Streamer");
             }
         }
         catch (Exception e) {
             throw ExceptionUtils.propagate(e, SQLException.class, SQLHandledException.class);
+        }
+    }
+
+    private boolean updateRunnerLink(String updateTarget, String fileLink) {
+        try {
+            ServerLoggers.systemLogger.info("Update streamer link " + fileLink + " to playlist: " + updateTarget);
+            List<String> paramLink = Arrays.asList("ln",
+                    "-s",
+                    updateTarget,
+                    fileLink);
+
+            ProcessBuilder linkUpdate = new ProcessBuilder(paramLink);
+            linkUpdate.redirectErrorStream(true);
+            Process processLink = linkUpdate.start();
+            boolean updateResult = processLink.waitFor(1000, TimeUnit.MILLISECONDS);
+
+            ServerLoggers.systemLogger.info(new BufferedReader(new
+                    InputStreamReader(processLink.getInputStream())).toString());
+
+            return updateResult;
+        } catch (IOException e) {
+            ServerLoggers.systemLogger.error("Cannot update link to the actual playlist: " + e.getMessage());
+            return false;
+        } catch (InterruptedException e) {
+            ServerLoggers.systemLogger.error("Cannot update link to the actual playlist: " + e.getMessage());
+            Thread.currentThread().interrupt();
+            return false;
         }
     }
 
@@ -71,19 +103,13 @@ public class PlaylistService extends InternalAction {
             // Prepare link to proper playlist for the service using simple bash command
             String filePL = (String) findProperty("path[Playlist]").readClasses(context, commandArgs).getValue();
             String linkPL = (String) findProperty("playlistLinkService[]").readClasses(context).getValue();
-            List<String> paramLink = Arrays.asList("ln",
-                    "-s",
-                    filePL,
-                    linkPL);
 
             // State Machine on the ffmpeg related systemd service
-            String pidService = (String) findProperty("pidFileService[]").readClasses(context).getValue();
             String nextCommand = "status";
             for (int i = 0; i < 2; i++) {
                 paramService.set(2, nextCommand);
                 switch (nextCommand) {
                     case "status" :
-                        //ProcessBuilder service = new ProcessBuilder(paramService);
                         // @ToDo Handle statuses and exceptions properly
                         if(mode) {
                             nextCommand = "start";
@@ -92,9 +118,9 @@ public class PlaylistService extends InternalAction {
                         }
                         break;
                     case "start" :
-                        ProcessBuilder linkCreate = new ProcessBuilder(paramLink);
-                        Process processLink = linkCreate.start();
-                        processLink.waitFor();
+                        if(!updateRunnerLink(filePL, linkPL)) {
+                            throw new IOException("Cannot update streamer playlist link");
+                        }
 
                         ProcessBuilder servicePL = new ProcessBuilder(paramService);
                         Process processPlay = servicePL.start();
@@ -107,12 +133,15 @@ public class PlaylistService extends InternalAction {
                         Process processStop = serviceStop.start();
                         processStop.waitFor();
                         break;
+                    default:
+                        break;
                 }
             }
         } catch (IOException e) {
             ServerLoggers.systemLogger.error("Cannot start the operating system process: " + e.getMessage());
         } catch (InterruptedException e) {
             ServerLoggers.systemLogger.error("Unable to complete the operating system process : " + e.getMessage());
+            Thread.currentThread().interrupt();
         }
     }
 }

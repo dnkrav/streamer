@@ -49,7 +49,6 @@ convertNextVideo 'Convert next video' () {
 
 // Run Playlist
 playlistRunner 'Run Playlist' INTERNAL 'lsfusion.solutions.streamer.PlaylistRunner' (Playlist);
-//testRunner 'Test Run' INTERNAL 'lsfusion.solutions.streamer.TestRunner' (Playlist);
 playlistService 'Trigger Playlist service' INTERNAL 'lsfusion.solutions.streamer.PlaylistService' (Playlist, STRING[5]);
 
 // Stop playlist
@@ -99,7 +98,11 @@ playlistRun 'Play' (Playlist p) {
     
     TRY {
         playlistService(p, 'Start');
-        isBlocked() <- TRUE;
+        IF isRunning() THEN {
+            isBlocked() <- TRUE;
+        } ELSE {
+            MESSAGE 'Cannot start the Playlist. Contact Administrator';
+        }
         APPLY;
     }
     CATCH {

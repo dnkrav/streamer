@@ -9,7 +9,7 @@ TABLE video(Video);
 
 filename 'File Name' = DATA STRING (Video) CHARWIDTH 50;
 path 'Folder containing the Video File' = DATA STRING (Video);
-filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) MATERIALIZED CHARWIDTH 100; // pathbuilder hardcoded for linux servers
+filelink 'Link to Video File' (Video v) = CONCAT '/', path(v), filename(v) MATERIALIZED CHARWIDTH 100; 
 
 dateTime 'Uploaded' = DATA DATETIME (Video);
 
