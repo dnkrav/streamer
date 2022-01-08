@@ -35,7 +35,7 @@ WHEN SETCHANGED (filename(Video v)) DO {
     dateTime(v) <- currentDateTime();
 }
 
-WHEN SET (isConverted(Video v)) DO {
+cleanUpConvertedVideo 'Delete converted Video' (Video v) {
     IF NOT toConvert(v) THEN RETURN;
     fileExists(filelinkOut(v));
     IF fileExists() THEN {
@@ -50,6 +50,23 @@ WHEN SET (isConverted(Video v)) DO {
             path(v) <- flvPath();
             filename(v) <- filenameConv(v);
         }
+        toConvert(v) <- NULL;
+        isConverted(v) <- TRUE;
+    }
+    ELSE {
+        // Accumulate files with errors
+        isConverted(v) <- NULL;
+        toConvert(v) <- NULL;
+    }
+}
+
+WHEN SET (isConverted(Video v)) DO {
+    // cleanUpConvertedVideo(v);
+    IF NOT toConvert(v) THEN RETURN;
+    fileExists(filelinkOut(v));
+    IF fileExists() THEN {
+        path(v) <- flvPath();
+        filename(v) <- filenameConv(v);
         toConvert(v) <- NULL;
         isConverted(v) <- TRUE;
     }
