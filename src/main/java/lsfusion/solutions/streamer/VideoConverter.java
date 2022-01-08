@@ -6,10 +6,13 @@ import lsfusion.server.language.ScriptingLogicsModule;
 import lsfusion.server.logics.action.controller.context.ExecutionContext;
 import lsfusion.server.logics.classes.ValueClass;
 import lsfusion.server.logics.property.classes.ClassPropertyInterface;
+import lsfusion.server.physics.admin.log.ServerLoggers;
 import lsfusion.server.physics.dev.integration.internal.to.InternalAction;
 import lsfusion.server.data.value.DataObject;
 
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.lang.ProcessBuilder;
 import java.sql.SQLException;
 import java.util.Iterator;
@@ -76,10 +79,17 @@ public class VideoConverter extends InternalAction {
 
             // Initialize and run the ffmpeg command
             ProcessBuilder converter = new ProcessBuilder(params);
+            converter.redirectErrorStream(true);
 
             Process process = converter.start();
 
             process.waitFor();
+
+            BufferedReader convertLog = new BufferedReader(new InputStreamReader(process.getInputStream()));
+            String info;
+            while ((info = convertLog.readLine()) != null) {
+                ServerLoggers.systemLogger.info(info);
+            }
 
             // Success operation flag
             findProperty("isConverted[Video]").change(true, context, commandArgs);

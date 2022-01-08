@@ -60,7 +60,7 @@ public class PlaylistService extends InternalAction {
         try {
             ServerLoggers.systemLogger.info("Update streamer link " + fileLink + " to playlist: " + updateTarget);
             List<String> paramLink = Arrays.asList("ln",
-                    "-s",
+                    "-sf",
                     updateTarget,
                     fileLink);
 
@@ -69,8 +69,11 @@ public class PlaylistService extends InternalAction {
             Process processLink = linkUpdate.start();
             boolean updateResult = processLink.waitFor(1000, TimeUnit.MILLISECONDS);
 
-            ServerLoggers.systemLogger.info(new BufferedReader(new
-                    InputStreamReader(processLink.getInputStream())).toString());
+            BufferedReader updateLog = new BufferedReader(new InputStreamReader(processLink.getInputStream()));
+            String info;
+            while ((info = updateLog.readLine()) != null) {
+                ServerLoggers.systemLogger.info(info);
+            }
 
             return updateResult;
         } catch (IOException e) {
