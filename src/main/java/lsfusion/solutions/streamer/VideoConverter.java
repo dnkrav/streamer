@@ -74,6 +74,8 @@ public class VideoConverter extends InternalAction {
                     "-ac", "2",
                     // Set the audio sampling frequency
                     "-ar", "44100",
+                    // overwrite output
+                    "-y",
                     // Output file
                     (String) findProperty("filelinkOut[Video]").readClasses(context, commandArgs).getValue());
 
