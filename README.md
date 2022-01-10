@@ -113,9 +113,14 @@ After building from sources the newer version should be installed for the 'lsfus
 The Video file should be of FLV format in order to eliminate video conversion workload at every streaming.  
 The streamer defines the video format at upload by the filename extension and convert the video into FLV if it doesn't match "*.flv".
 
-## Benchmark
+## Manual video files handling
 
-Performance of the application to convert from *.MOV into *.FLV on testing server with following resources:
+Let say we need manually to process a bulk upload of files distributed in a subfolders hierarchy in the *manual* folder.
 
-2 COVID-19: 2 min 21 sec 
-3 COVID-19: 2 min 21 sec 
+A *bash* script to extract files from subfolders is created for this purpose: *conf/move-from-subfolders.sh*
+
+A *cron* job might be used then to convert videos using ffmpeg command: *conf/mov2flv_convert.sh*
+
+Settings for the cron job in the */etc/cron.d/mov2flv* to try the script every minute:
+
+    */1 * * * * lsfusion /bin/bash /mnt/video/manual/mov2flv_convert.sh
