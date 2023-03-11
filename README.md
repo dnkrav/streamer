@@ -59,6 +59,14 @@ The videos uploaded by user are being automatically converted into FLV format fo
 * Buttons **Add**, **Edit**, **Delete** - run named Editor for selected playlist;
 * **Video files** - list of videos within the selected Playlist.
 
+In the background the Application triggers for streaming an *ffmpeg* process with the following parameters:
+
+````
+ffmpeg -re -stream_loop -1 -f concat -safe 0 -i "${PLAYLIST_LINK}" -c copy -f flv "${STREAM_RTMP_ADDRESS}"
+````
+
+See more details in comments through the source code.
+
 ## Playlist Editor
 
 * **Name** - set custom name for the playlist.
@@ -77,6 +85,13 @@ The videos uploaded by user are being automatically converted into FLV format fo
 * **Playlist** - preview of the playlist resulting the selected preferences
 <!--* Button **Upload a new video file** - use GUI to upload file on the server *(not implemented yet)*-->
 
+In the background the Application triggers for video conversion an *ffmpeg* process with the following parameters:
+
+````
+ffmpeg -i "${INPUT_FILENAME}" -filter:v fps=30 -video_track_timescale 1k -c:v libx264 -preset medium -b:v 3000K -maxrate 3000k -bufsize 6000k -g 60 -c:a aac -b:a 128k -ac 2 -ar 44100 -y "${OUTPUT_FILENAME}"
+````
+
+See more details in comments through the source code.
 
 ## Video Converter
 
@@ -124,3 +139,20 @@ A *cron* job might be used then to convert videos using ffmpeg command: *conf/mo
 Settings for the cron job in the */etc/cron.d/mov2flv* to try the script every minute:
 
     */1 * * * * lsfusion /bin/bash /mnt/video/manual/mov2flv_convert.sh
+
+## Different framerate parameters between video files drives to stop of the streaming
+
+Analyze framerates of all videos in a folder:
+
+````
+# use your video file format
+out_filename=video_format.csv;
+for f in *.flv; 
+do 
+  ffprobe "$f" 2>&1 >/dev/null | grep "Video: " | xargs -i echo "$f", {}
+done > "$out_filename"; cat "$out_filename";
+````
+
+If the framerate, tbr either tbn are not consistent, the *copy* mode cannot be used for concatenation.
+
+To adjust tbn an additional parameter ** might be used, for adjusting framerate a conversion should be performed.
