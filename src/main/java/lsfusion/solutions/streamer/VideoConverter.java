@@ -58,7 +58,7 @@ public class VideoConverter extends InternalAction {
                     "-i", (String) findProperty("filelink[Video]").readClasses(context, commandArgs).getValue(),
                     // Select codec for video
                     "-c:v",
-                    // FLV doesn't support H.265, which is faster then H.264 below: https://trac.ffmpeg.org/ticket/6389
+                    // FLV doesn't support H.265, which is faster than H.264 below: https://trac.ffmpeg.org/ticket/6389
                     "libx264",
                     // Set a bench of encoder options, a balance between encoding speed and file size: https://trac.ffmpeg.org/wiki/Encode/H.264#Overwritingdefaultpresetsettings
                     "-preset", "medium",

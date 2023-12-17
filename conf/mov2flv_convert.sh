@@ -12,12 +12,14 @@ then
   then
     # Convert single file
     movfile=$(ls mov/*.mov | head -1)
-    flvfile="flv/${movfile##*/}"
+    flvfile="${movfile##*/}"
     # Change extension
     flvfile="${flvfile%mov}flv"
     # Move converted file into a backup
     bakfile="arch/${movfile##*/}"
-    ffmpeg -i "$movfile" -c:v libx264 -preset medium -b:v 3000K -maxrate 3000k -bufsize 6000k -g 50 -c:a aac -b:a 128k -ac 2 -ar 44100 -y "$flvfile"
+    ffmpeg -i "$movfile" -filter:v fps=30 -video_track_timescale 1k -c:v libx264 -preset medium -b:v 3000K -maxrate 3000k -bufsize 6000k -g 60 -c:a aac -b:a 128k -ac 2 -ar 44100 -y "$flvfile"
+    chown lsfusion:lsfusion "$flvfile"
+    mv "$flvfile" "flv/$flvfile"
     mv "$movfile" "$bakfile"
   fi
 fi

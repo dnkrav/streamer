@@ -1,0 +1,197 @@
+MODULE YouTubeStatusCheck;
+
+REQUIRE Utils, System, Runner;
+
+endpointStatusCheck 'Endpoint' = DATA STRING ();
+channelID 'Channel ID' = DATA STRING[30] () ECHO;
+apiKey 'API Key' = DATA STRING () ECHO;
+latestPlaying 'Latest Playlist playing' = DATA Playlist ();
+latestPlayingName 'Latest Playlist playing' () = name(latestPlaying());
+latestPlayingTitle 'Latest Video Title playing' = DATA STRING ();
+emailAdmin 'Notification Email' = DATA STRING ();
+
+buildEndpoint () = 
+    endpointStatusCheck() + 'search?' +
+    'part=snippet&' +
+    'channelId=' + channelID() + '&' +
+    'type=video&eventType=live&' +
+    'key=' + apiKey();
+
+EXTEND FORM integrationData
+    PROPERTIES () autoRestart, endpointStatusCheck, latestPlayingName, emailAdmin
+    PROPERTIES () READONLY channelID, apiKey, latestPlayingTitle
+;
+
+DESIGN integrationData {
+    pane {
+        NEW statusCheck {
+            caption = 'Check Status';
+            type = CONTAINERV;
+            alignment = STRETCH;
+            MOVE PROPERTY(latestPlayingName());
+            MOVE PROPERTY(latestPlayingTitle());
+            MOVE PROPERTY(endpointStatusCheck());
+            MOVE PROPERTY(channelID());
+            MOVE PROPERTY(apiKey());
+            MOVE PROPERTY(emailAdmin());
+            MOVE PROPERTY(autoRestart());
+        }
+    }
+}
+
+GROUP pageInfo;
+GROUP items;
+GROUP snippet;
+
+GROUP thumbnails : snippet;
+GROUP default : thumbnails;
+GROUP high : thumbnails;
+GROUP medium : thumbnails;
+GROUP id;
+
+regionCode = DATA LOCAL STRING();
+kind = DATA LOCAL STRING();
+totalResults = DATA LOCAL NUMERIC();
+resultsPerPage = DATA LOCAL NUMERIC();
+etag = DATA LOCAL STRING();
+publishTime = DATA LOCAL STRING(INTEGER);
+publishedAt = DATA LOCAL STRING(INTEGER);
+description = DATA LOCAL STRING(INTEGER);
+title = DATA LOCAL STRING(INTEGER);
+width = DATA LOCAL NUMERIC(INTEGER);
+url = DATA LOCAL STRING(INTEGER);
+height = DATA LOCAL NUMERIC(INTEGER);
+width1 = DATA LOCAL NUMERIC(INTEGER);
+url1 = DATA LOCAL STRING(INTEGER);
+height1 = DATA LOCAL NUMERIC(INTEGER);
+width2 = DATA LOCAL NUMERIC(INTEGER);
+url2 = DATA LOCAL STRING(INTEGER);
+height2 = DATA LOCAL NUMERIC(INTEGER);
+channelId = DATA LOCAL STRING(INTEGER);
+channelTitle = DATA LOCAL STRING(INTEGER);
+liveBroadcastContent = DATA LOCAL STRING(INTEGER);
+kind1 = DATA LOCAL STRING(INTEGER);
+etag1 = DATA LOCAL STRING(INTEGER);
+kind2 = DATA LOCAL STRING(INTEGER);
+videoId = DATA LOCAL STRING(INTEGER);
+
+FORM searchListResponse
+    PROPERTIES() regionCode, kind, etag
+    PROPERTIES() IN pageInfo totalResults, resultsPerPage
+
+    OBJECTS items = INTEGER
+
+    PROPERTIES(items) kind1 EXTID 'kind', etag1 EXTID 'etag'
+
+    OBJECTS snippet = INTEGER
+    PROPERTIES(items) IN snippet publishTime, publishedAt, description, title, channelId, channelTitle, liveBroadcastContent
+
+    OBJECTS thumbnails = INTEGER IN snippet
+    PROPERTIES(items) IN default width, url, height
+    FILTERS imported(items)
+    PROPERTIES(items) IN high width1 EXTID 'width', url1 EXTID 'url', height1 EXTID 'height'
+    PROPERTIES(items) IN medium width2 EXTID 'width', url2 EXTID 'url', height2 EXTID 'height'
+    PROPERTIES(items) IN id kind2 EXTID 'kind', videoId
+;
+
+getSearchListResponse (STRING endpoint) {
+    NEWSESSION {
+        // if was stopped by user, than drop the cache
+        latestPlaying() <- GROUP LAST Playlist p IF isRunning(p) ORDER dateTime(p);
+        APPLY;
+    }
+    
+    LOCAL verbose = BOOLEAN ();
+    LOCAL endpointSearchListResponse = STRING ();
+    IF (endpoint) THEN {
+        verbose() <- TRUE;
+        endpointSearchListResponse() <- endpoint;
+    } ELSE {
+        endpointSearchListResponse() <- buildEndpoint();
+    }
+
+    IF (verbose()) THEN {
+        printToLog('Sending Check Status to endpoint: ' + endpointSearchListResponse());
+    }
+
+    LOCAL result = FILE();
+    EXTERNAL HTTP GET endpointSearchListResponse() TO result;
+    
+    IF (verbose()) THEN {
+        fileToString(result());
+        printToLog('Received Check Status:\n' + resultString());
+    }
+    
+    IMPORT searchListResponse JSON FROM result();
+
+    IF (verbose()) THEN {
+        open(result());
+    }
+
+    LOCAL isRunningOne = BOOLEAN();
+    
+    FOR imported(INTEGER item) DO {
+        isRunningOne() <- TRUE;
+        latestPlayingTitle() <- title(item);
+        IF (verbose()) THEN {
+            printToLog('Video is streaming:' + title(item));
+            MESSAGE title(item) + '\nis playing in Playlist:\n' + name(latestPlaying());
+        }
+    }
+    
+    IF isRunningOne() THEN {
+        IF notifyCheckRestart(latestPlaying()) THEN {
+            notifyCheckRestart(latestPlaying()) <- NULL;
+            EMAIL
+                SUBJECT 'Playlist restarted successfully'
+                TO emailAdmin()
+                BODY 'Playlist ' + name(latestPlaying()) + ' is streaming again after restart.';
+        }
+        APPLY;
+        RETURN;
+    }
+    
+    IF NOT isRunningOne() THEN {
+        NEWSESSION {
+            latestPlayingTitle() <- '';
+            APPLY;
+        }
+        IF latestPlaying() THEN {
+            IF autoRestart(latestPlaying()) THEN {
+                NEWSESSION {
+                    autoRestart(latestPlaying()) <- NULL;
+                    notifyCheckRestart(latestPlaying()) <- TRUE;
+                    APPLY;
+                }
+                TRY {
+                    printToLog('Try to restart the Stream');
+                    playlistStop(latestPlaying());
+                    playlistRun(latestPlaying());
+                    printToLog('Finished Stream restarting attempt');
+                } CATCH {
+                    printToLog('Error occured restarting Playlist:\n' + messageCaughtException());
+                    printToLog(javaStackTraceCaughtException());
+                }
+            }
+            IF NOT notifiedDrop(latestPlaying()) THEN {
+                NEWSESSION {
+                    notifiedDrop(latestPlaying()) <- TRUE;
+                    APPLY;
+                }
+                TRY {
+                    EMAIL
+                        SUBJECT 'Playlist is not streaming'
+                        TO emailAdmin()
+                        BODY 'Detected non streaming of the Playlist ' + name(latestPlaying()) + ' - made attempt to restart.';
+                } CATCH {
+                    printToLog('Error occured sending Email:\n' + messageCaughtException());
+                    printToLog(javaStackTraceCaughtException());
+                }
+            }
+        }
+    }
+}
+
+getSearchListResponse () {
+    getSearchListResponse(NULL);
+}
