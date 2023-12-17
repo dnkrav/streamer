@@ -54,7 +54,13 @@ playlistService 'Trigger Playlist service' INTERNAL 'lsfusion.solutions.streamer
 // Stop playlist
 // @ToDo When allow parallel run and conversion resolve that stopping playlist may stop some another ffmpeg job
 
+autoRestart 'Auto Restart' = DATA BOOLEAN ();
+
 playlistStop 'Stop' (Playlist p) {
+    notifyCheckRestart(p) <- NULL;
+    notifiedDrop(p) <- TRUE;
+    autoRestart(p) <- NULL;
+    
     IF NOT isRunning(p) THEN {
         MESSAGE 'The Playlist is not playing';
         RETURN;
@@ -95,6 +101,10 @@ playlistRun 'Play' (Playlist p) {
     }
     
     checkDirectory(path(Folder.flv));
+
+    notifyCheckRestart(p) <- NULL;
+    notifiedDrop(p) <- NULL;
+    autoRestart(p) <- autoRestart();
     
     TRY {
         playlistService(p, 'Start');

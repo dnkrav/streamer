@@ -12,6 +12,9 @@ name 'Name' = DATA STRING[200] (Playlist) NONULL;
 isGenerated 'ready' = DATA BOOLEAN (Playlist);
 isRunning 'playing' = DATA BOOLEAN (Playlist);
 path 'Path to generated playlist' = DATA STRING (Playlist);
+notifiedDrop 'Email notification on playing drop was sent' = DATA BOOLEAN (Playlist);
+autoRestart 'Auto Restart' = DATA BOOLEAN (Playlist);
+notifyCheckRestart 'Email notification on playing restart' = DATA BOOLEAN (Playlist);
 
 playlist 'Playlist' = GROUP AGGR Playlist p BY name(p);
 
@@ -119,7 +122,7 @@ DESIGN playlist {
 
 FORM playlists 'Playlists'
     OBJECTS p = Playlist
-    PROPERTIES (p) READONLY isRunning, dateTime, name, count
+    PROPERTIES (p) READONLY isRunning, notifiedDrop, autoRestart, notifyCheckRestart, dateTime, name, count
     PROPERTIES (p) NEWSESSION NEW , EDIT , DELETE 
     
     OBJECTS v = Video
